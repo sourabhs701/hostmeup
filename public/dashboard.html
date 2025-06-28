@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - HostMeUp</title>
+</head>
+<body>
+    <h1>HostMeUp Dashboard</h1>
+    
+    <div>
+        <h2>Upload Files</h2>
+        <input type="file" id="fileInput" multiple>
+        <button id="uploadButton">Upload</button>
+        <div id="uploadStatus"></div>
+    </div>
+    
+    <div>
+        <h2>Your Files</h2>
+        <button id="refreshButton">Refresh List</button>
+        <ul id="filesList">
+            <li>Loading files...</li>
+        </ul>
+    </div>
+    
+    <div>
+        <button id="logoutButton">Logout</button>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        const uploadButton = document.getElementById('uploadButton');
+        const fileInput = document.getElementById('fileInput');
+        const filesList = document.getElementById('filesList');
+        const uploadStatus = document.getElementById('uploadStatus');
+        const refreshButton = document.getElementById('refreshButton');
+        const logoutButton = document.getElementById('logoutButton');
+
+        // Check if user is authenticated
+        if (!token) {
+            window.location.href = 'signIn.html';
+        }
+
+        // Upload files
+        uploadButton.addEventListener('click', async () => {
+            const files = fileInput.files;
+            if (files.length === 0) {
+                uploadStatus.textContent = 'Please select files to upload';
+                return;
+            }
+
+            uploadStatus.textContent = 'Uploading...';
+            uploadButton.disabled = true;
+
+            try {
+                for (let file of files) {
+                    await uploadFile(file);
+                }
+
+                uploadStatus.textContent = 'Upload successful!';
+                fileInput.value = '';
+                loadFiles();
+            } catch (error) {
+                uploadStatus.textContent = `Upload failed: ${error.message}`;
+            } finally {
+                uploadButton.disabled = false;
+            }
+        });
+
+        // Upload single file using presigned URL
+        async function uploadFile(file) {
+            // Step 1: Get presigned URL
+            const uploadResponse = await fetch(`/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error(`Failed to get upload URL for ${file.name}`);
+            }
+
+            const { uploadUrl, key } = await uploadResponse.json();
+
+            // Step 2: Upload to S3 using presigned URL
+            const s3Response = await fetch(uploadUrl, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': file.type
+                }
+            });
+
+            if (!s3Response.ok) {
+                throw new Error(`Failed to upload ${file.name} to S3`);
+            }
+
+            // Step 3: Confirm upload and save metadata
+            const confirmResponse = await fetch('/files/confirm', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    filename: file.name,
+                    size: file.size,
+                    key: key
+                })
+            });
+
+            if (!confirmResponse.ok) {
+                throw new Error(`Failed to confirm upload for ${file.name}`);
+            }
+        }
+
+        // Load files list
+        async function loadFiles() {
+            try {
+                const response = await fetch('/files', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch files');
+                }
+
+                const data = await response.json();
+                let files;
+                if (Array.isArray(data)) {
+                    files = data;
+                } else if (data.files && Array.isArray(data.files)) {
+                    files = data.files;
+                } else if (data.data && Array.isArray(data.data)) {
+                    files = data.data;
+                } else {
+                    files = [];
+                }
+                
+                displayFiles(files);
+            } catch (error) {
+                console.error('Error loading files:', error);
+                filesList.innerHTML = '<li>Error loading files: ' + error.message + '</li>';
+            }
+        }
+
+        // Display files in the list
+        function displayFiles(files) {
+            // Ensure files is an array
+            if (!Array.isArray(files)) {
+                console.error('Files is not an array:', files);
+                filesList.innerHTML = '<li>Error: Invalid file data received</li>';
+                return;
+            }
+
+            if (files.length === 0) {
+                filesList.innerHTML = '<li>No files uploaded yet</li>';
+                return;
+            }
+
+            filesList.innerHTML = files.map(file => `
+                <li>
+                    <strong>${file.name || 'Unknown file'}</strong> 
+                    ${file.size ? `(${formatFileSize(file.size)})` : ''} 
+                    ${file.uploadDate ? `- ${new Date(file.uploadDate).toLocaleDateString()}` : ''}
+                    <button onclick="deleteFile('${file.id || ''}')">Delete</button>
+                    <button onclick="downloadFile('${file.key || ''}')">Download</button>
+                </li>
+            `).join('');
+        }
+
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Delete file
+        async function deleteFile(fileId) {
+            if (!confirm('Are you sure you want to delete this file?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/files/${fileId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete file');
+                }
+
+                loadFiles();
+            } catch (error) {
+                alert('Delete failed: ' + error.message);
+            }
+        }
+
+        // Download file
+        function downloadFile(key) {
+            window.open(`https://d3h8gvgna3380s.cloudfront.net/${key}`, '_blank');
+        }
+
+        // Refresh files list
+        refreshButton.addEventListener('click', loadFiles);
+
+        // Logout
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'signIn.html';
+        });
+
+        // Load files on page load
+        loadFiles();
+    </script>
+</body>
+</html>

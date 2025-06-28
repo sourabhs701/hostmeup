@@ -4,16 +4,38 @@ import { protectedRoute, generateToken } from "./middleware.js";
 import { dbHelpers } from "./sqlite.js";
 import { s3Helper } from "./s3.js";
 import dotenv from "dotenv";
+import path from "path";
+
+const __dirname = path.resolve();
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
+app.use(express.static("public"));
 
 app.use(express.json());
 
-app.post("/register", async (req, res) => {
+//frontend routes
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/signup", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "signup.html"));
+});
+
+app.get("/signin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "signin.html"));
+});
+
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+//backend routes
+app.post("/signup", async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -50,7 +72,7 @@ app.post("/register", async (req, res) => {
   }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/signin", async (req, res) => {
   try {
     const { username, password } = req.body;
 
