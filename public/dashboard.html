@@ -4,36 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - HostMeUp</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <h1>HostMeUp Dashboard</h1>
-    
-    <div>
-        <h2>Upload Files</h2>
-        <input type="file" id="fileInput" multiple>
-        <button id="uploadButton">Upload</button>
-        <div id="uploadStatus"></div>
-    </div>
-    
-    <div>
-        <h2>Your Files</h2>
-        <button id="refreshButton">Refresh List</button>
-        <ul id="filesList">
-            <li>Loading files...</li>
-        </ul>
-    </div>
-    
-    <div>
-        <button id="logoutButton">Logout</button>
-    </div>
+<body class="dashboard-body">
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="logo-section">
+                <h1 class="dashboard-title"><a href="/">HostMeUp</a></h1>
+                <p class="dashboard-subtitle">File Management Dashboard</p>
+            </div>
+            <div class="header-actions">
+                <button id="logoutButton" class="btn btn-secondary">
+                    <span class="btn-icon">⏻</span>
+                    Logout
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Content -->
+    <main class="dashboard-main">
+        <!-- Storage Usage Section -->
+        <section class="storage-section">
+            <div class="storage-card">
+                <h2 class="storage-title">Storage Usage</h2>
+                <div class="storage-info">
+                    <span id="storageUsed">0 MB of 1GB used</span>
+                </div>
+                <div class="storage-bar">
+                    <div class="storage-progress" id="storageProgress"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Section -->
+        <section class="upload-section">
+            <div class="upload-card">
+                <h2 class="upload-title">Upload Files</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14,2 14,8 20,8"></polyline>
+                                <line x1="12" y1="18" x2="12" y2="12"></line>
+                                <polyline points="9,15 12,12 15,15"></polyline>
+                            </svg>
+                        </div>
+                        <p class="upload-text">Click to upload or drag and drop</p>
+                        <p class="upload-hint">Multiple files supported (max 100MB each)</p>
+                        <input type="file" id="fileInput" multiple accept="*/*">
+                    </div>
+                </div>
+                
+                <div id="uploadStatus" class="upload-status"></div>
+            </div>
+        </section>
+
+        <!-- Files Section -->
+        <section class="files-section">
+            <div class="files-header">
+                <h2>
+                    Your Files
+                </h2>
+                <div class="files-stats">
+                    <span id="filesCount" class="files-count">0 files</span>
+
+                </div>
+            </div>
+            
+            <div class="files-container">
+                <div id="filesList" class="files-grid">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading your files...</p>
+                    </div>
+                </div>
+                
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-icon">📄</div>
+                    <h3>No files yet</h3>
+                    <p>Upload your first file to get started</p>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <script>
         const token = localStorage.getItem('token');
-        const uploadButton = document.getElementById('uploadButton');
         const fileInput = document.getElementById('fileInput');
         const filesList = document.getElementById('filesList');
         const uploadStatus = document.getElementById('uploadStatus');
-        const refreshButton = document.getElementById('refreshButton');
         const logoutButton = document.getElementById('logoutButton');
 
         // Check if user is authenticated
@@ -41,29 +105,74 @@
             window.location.href = 'signIn.html';
         }
 
-        // Upload files
-        uploadButton.addEventListener('click', async () => {
-            const files = fileInput.files;
-            if (files.length === 0) {
-                uploadStatus.textContent = 'Please select files to upload';
-                return;
-            }
+        // Drag and drop functionality
+        const uploadArea = document.getElementById('uploadArea');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        uploadArea.addEventListener('drop', handleDrop, false);
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        function highlight(e) {
+            uploadArea.classList.add('dragover');
+        }
+        
+        function unhighlight(e) {
+            uploadArea.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            fileInput.files = files;
+            
+            // Trigger the change event to handle upload
+            const event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
+        }
 
-            uploadStatus.textContent = 'Uploading...';
-            uploadButton.disabled = true;
+        // Handle file selection (click to upload)
+        fileInput.addEventListener('change', async () => {
+            const files = fileInput.files;
+            if (files.length === 0) return;
+
+            uploadStatus.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`;
+            uploadStatus.className = 'upload-status uploading show';
 
             try {
-                for (let file of files) {
-                    await uploadFile(file);
+                for (let i = 0; i < files.length; i++) {
+                    uploadStatus.textContent = `Uploading ${i + 1} of ${files.length}: ${files[i].name}`;
+                    await uploadFile(files[i]);
                 }
 
-                uploadStatus.textContent = 'Upload successful!';
+                uploadStatus.textContent = `Successfully uploaded ${files.length} file${files.length > 1 ? 's' : ''}!`;
+                uploadStatus.className = 'upload-status success show';
                 fileInput.value = '';
                 loadFiles();
+                updateStorageUsage();
+                
+                // Hide success message after 3 seconds
+                setTimeout(() => {
+                    uploadStatus.className = 'upload-status';
+                }, 3000);
             } catch (error) {
                 uploadStatus.textContent = `Upload failed: ${error.message}`;
-            } finally {
-                uploadButton.disabled = false;
+                uploadStatus.className = 'upload-status error show';
             }
         });
 
@@ -149,27 +258,133 @@
 
         // Display files in the list
         function displayFiles(files) {
+            const filesCount = document.getElementById('filesCount');
+            const emptyState = document.getElementById('emptyState');
+            
             // Ensure files is an array
             if (!Array.isArray(files)) {
                 console.error('Files is not an array:', files);
-                filesList.innerHTML = '<li>Error: Invalid file data received</li>';
+                filesList.innerHTML = '<div class="error-state"><p>Error loading files</p></div>';
+                filesCount.textContent = '0 files';
                 return;
             }
+
+            // Update files count
+            filesCount.textContent = `${files.length} file${files.length !== 1 ? 's' : ''}`;
 
             if (files.length === 0) {
-                filesList.innerHTML = '<li>No files uploaded yet</li>';
+                filesList.style.display = 'none';
+                emptyState.style.display = 'block';
                 return;
             }
 
-            filesList.innerHTML = files.map(file => `
-                <li>
-                    <strong>${file.name || 'Unknown file'}</strong> 
-                    ${file.size ? `(${formatFileSize(file.size)})` : ''} 
-                    ${file.uploadDate ? `- ${new Date(file.uploadDate).toLocaleDateString()}` : ''}
-                    <button onclick="deleteFile('${file.id || ''}')">Delete</button>
-                    <button onclick="downloadFile('${file.key || ''}')">Download</button>
-                </li>
-            `).join('');
+            filesList.style.display = 'grid';
+            emptyState.style.display = 'none';
+            console.log(files)
+
+            filesList.innerHTML = files.map(file => {
+                const uploadDate = file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString() : 'Unknown';
+                const fileUrl = `https://cdn.srb.codes/${file.key || ''}`;
+                const fileName = file.name || 'Unknown file';
+                const fileExtension = getFileExtension(fileName);
+                
+                return `
+                    <div class="file-card">
+                        <div class="file-preview">
+                            ${generateFilePreview(fileUrl, fileName, fileExtension)}
+                        </div>
+                        <div class="file-info">
+                            <h3 class="file-name" title="${fileName}">${fileName}</h3>
+                            <div class="file-meta">
+                                <span class="file-size">${file.size ? formatFileSize(file.size) : 'Unknown size'}</span>
+                                <span class="file-date">${uploadDate}</span>
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="btn btn-sm btn-primary" onclick="downloadFile('${file.key || ''}')" title="Download file">
+                                Download
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteFile('${file.id || ''}')" title="Delete file">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Get file extension
+        function getFileExtension(filename) {
+            return filename.split('.').pop().toLowerCase();
+        }
+
+        // Generate file preview based on file type
+        function generateFilePreview(fileUrl, fileName, extension) {
+            const imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'];
+            const videoTypes = ['mp4', 'avi', 'mkv', 'mov', 'wmv', 'webm', 'ogg'];
+            const audioTypes = ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'];
+            const pdfTypes = ['pdf'];
+            
+            if (imageTypes.includes(extension)) {
+                return `
+                    <img src="${fileUrl}" alt="${fileName}" class="preview-image" 
+                         onload="this.classList.add('loaded')"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="preview-fallback" style="display: none;">
+                        <span class="preview-icon">🖼️</span>
+                        <span class="preview-text">Image</span>
+                    </div>
+                `;
+            } else if (videoTypes.includes(extension)) {
+                return `
+                    <video class="preview-video" preload="metadata" muted>
+                        <source src="${fileUrl}#t=1" type="video/${extension}">
+                    </video>
+                    <div class="preview-overlay">
+                        <span class="preview-icon">▶️</span>
+                        <span class="preview-text">Video</span>
+                    </div>
+                `;
+            } else if (audioTypes.includes(extension)) {
+                return `
+                    <div class="preview-fallback audio-preview">
+                        <span class="preview-icon">🎵</span>
+                        <span class="preview-text">Audio</span>
+                        <div class="audio-waveform">
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                            <div class="wave-bar"></div>
+                        </div>
+                    </div>
+                `;
+            } else if (pdfTypes.includes(extension)) {
+                return `
+                    <div class="preview-fallback pdf-preview">
+                        <span class="preview-icon">📄</span>
+                        <span class="preview-text">PDF Document</span>
+                    </div>
+                `;
+            } else {
+                // Default fallback for other file types
+                const fileTypeMap = {
+                    'doc': 'Document', 'docx': 'Document', 'txt': 'Text File', 'rtf': 'Rich Text',
+                    'xls': 'Spreadsheet', 'xlsx': 'Spreadsheet', 'csv': 'Spreadsheet',
+                    'ppt': 'Presentation', 'pptx': 'Presentation',
+                    'zip': 'Archive', 'rar': 'Archive', '7z': 'Archive', 'tar': 'Archive', 'gz': 'Archive',
+                    'js': 'JavaScript', 'html': 'HTML', 'css': 'CSS', 'py': 'Python', 'java': 'Java',
+                    'json': 'JSON', 'xml': 'XML', 'yml': 'YAML', 'yaml': 'YAML'
+                };
+                
+                const fileType = fileTypeMap[extension] || 'File';
+                return `
+                    <div class="preview-fallback">
+                        <span class="preview-icon">📄</span>
+                        <span class="preview-text">${fileType}</span>
+                    </div>
+                `;
+            }
         }
 
         // Format file size
@@ -200,6 +415,7 @@
                 }
 
                 loadFiles();
+                updateStorageUsage();
             } catch (error) {
                 alert('Delete failed: ' + error.message);
             }
@@ -207,11 +423,10 @@
 
         // Download file
         function downloadFile(key) {
-            window.open(`https://d3h8gvgna3380s.cloudfront.net/${key}`, '_blank');
+            window.open(`https://cdn.srb.codes/${key}`, '_blank');
         }
 
-        // Refresh files list
-        refreshButton.addEventListener('click', loadFiles);
+
 
         // Logout
         logoutButton.addEventListener('click', () => {
@@ -219,8 +434,42 @@
             window.location.href = 'signIn.html';
         });
 
-        // Load files on page load
+        // Storage usage calculation
+        function updateStorageUsage() {
+            // This would typically come from your backend
+            // For now, we'll calculate from the current files list
+            fetch('/files', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                let files = [];
+                if (Array.isArray(data)) {
+                    files = data;
+                } else if (data.files && Array.isArray(data.files)) {
+                    files = data.files;
+                } else if (data.data && Array.isArray(data.data)) {
+                    files = data.data;
+                }
+                
+                const totalSize = files.reduce((sum, file) => sum + (file.size || 0), 0);
+                const totalSizeGB = 1; // 1GB limit
+                const usedSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+                const usagePercentage = (totalSize / (totalSizeGB * 1024 * 1024 * 1024)) * 100;
+                
+                document.getElementById('storageUsed').textContent = `${usedSizeMB} MB of ${totalSizeGB}GB used`;
+                document.getElementById('storageProgress').style.width = `${Math.min(usagePercentage, 100)}%`;
+            })
+            .catch(error => {
+                console.error('Error calculating storage usage:', error);
+            });
+        }
+
+        // Load files and storage usage on page load
         loadFiles();
+        updateStorageUsage();
     </script>
 </body>
 </html>
