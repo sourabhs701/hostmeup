@@ -27,7 +27,7 @@ app.get("/signup", (req, res) => {
 });
 
 app.get("/signin", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "signin.html"));
+  res.sendFile(path.join(__dirname, "public", "signIn.html"));
 });
 
 app.get("/dashboard", (req, res) => {

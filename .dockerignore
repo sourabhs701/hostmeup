@@ -1,0 +1,27 @@
+node_modules
+.git
+.gitignore
+docs/
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+
+# Database files (SQLite)
+*.sqlite
+*.db
