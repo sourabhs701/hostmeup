@@ -5,6 +5,7 @@ import { dbHelpers } from "./sqlite.js";
 import { s3Helper } from "./s3.js";
 import dotenv from "dotenv";
 import path from "path";
+import si from "systeminformation";
 
 const __dirname = path.resolve();
 
@@ -188,6 +189,19 @@ app.post("/files/confirm", protectedRoute, async (req, res) => {
   } catch (error) {
     console.error("Error saving file metadata:", error);
     res.status(500).json({ error: "Failed to save file metadata" });
+  }
+});
+
+app.get("/metrics", async (req, res) => {
+  try {
+    const cpu = await si.currentLoad();
+    const mem = await si.mem();
+    const temp = await si.cpuTemperature();
+    const metrics = { cpu, mem, temp };
+    res.json(metrics);
+  } catch (error) {
+    console.error("Error fetching metrics:", error);
+    res.status(500).json({ error: "Failed to fetch metrics" });
   }
 });
 
