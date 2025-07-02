@@ -102,7 +102,7 @@
 
         // Check if user is authenticated
         if (!token) {
-            window.location.href = 'signIn.html';
+            window.location.href = 'signin.html';
         }
 
         // Drag and drop functionality
@@ -431,7 +431,7 @@
         // Logout
         logoutButton.addEventListener('click', () => {
             localStorage.removeItem('token');
-            window.location.href = 'signIn.html';
+            window.location.href = 'signin.html';
         });
 
         // Storage usage calculation
