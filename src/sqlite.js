@@ -1,6 +1,6 @@
 import sqlite3 from "sqlite3";
 
-export const db = new sqlite3.Database("./hostmeup.db");
+export const db = new sqlite3.Database("./data/app.db");
 
 const createTables = () => {
   db.run(`
