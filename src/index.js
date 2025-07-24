@@ -8,6 +8,7 @@ import { s3Helper } from "./s3.js";
 import dotenv from "dotenv";
 import path from "path";
 import si from "systeminformation";
+import fs from "fs";
 
 const __dirname = path.resolve();
 
@@ -19,6 +20,19 @@ const PORT = 3000;
 app.use(express.static("public"));
 
 app.use(express.json());
+
+app.use((req, res, next) => {
+  fs.appendFile(
+    path.join(__dirname, "logs", "requests.txt"),
+    `${new Date().toISOString()} - ${req.method} ${req.url}\n`,
+    (err) => {
+      if (err) {
+        console.error("Error writing to log file:", err);
+      }
+    }
+  );
+  next();
+});
 
 //frontend routes
 app.get("/", (req, res) => {
