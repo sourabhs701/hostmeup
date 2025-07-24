@@ -1,7 +1,9 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import { protectedRoute, generateToken } from "./middleware.js";
-import { dbHelpers } from "./sqlite.js";
+import { db } from "./db/db.js";
+import { users, files } from "./db/schema.js";
+import { eq } from "drizzle-orm";
 import { s3Helper } from "./s3.js";
 import dotenv from "dotenv";
 import path from "path";
@@ -47,8 +49,11 @@ app.post("/signup", async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await dbHelpers.getUserByUsername(username);
-    if (existingUser) {
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
+    if (existingUser.length > 0) {
       return res.status(409).json({ error: "Username already exists" });
     }
 
@@ -57,7 +62,14 @@ app.post("/signup", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create user
-    const user = await dbHelpers.createUser(username, hashedPassword);
+    const result = await db
+      .insert(users)
+      .values({
+        username,
+        password: hashedPassword,
+      })
+      .returning();
+    const user = result[0];
 
     // Generate token
     const token = generateToken(user);
@@ -84,7 +96,11 @@ app.post("/signin", async (req, res) => {
     }
 
     // Get user from database
-    const user = await dbHelpers.getUserByUsername(username);
+    const result = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username));
+    const user = result[0];
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -109,11 +125,28 @@ app.post("/signin", async (req, res) => {
   }
 });
 
+app.get("/metrics", async (req, res) => {
+  try {
+    const cpu = await si.currentLoad();
+    const mem = await si.mem();
+    const temp = await si.cpuTemperature();
+    const metrics = { cpu, mem, temp };
+    res.json(metrics);
+  } catch (error) {
+    console.error("Error fetching metrics:", error);
+    res.status(500).json({ error: "Failed to fetch metrics" });
+  }
+});
+
 app.get("/files", protectedRoute, async (req, res) => {
   try {
-    const files = await dbHelpers.getFilesByUser(req.user.id);
+    const userFiles = await db
+      .select()
+      .from(files)
+      .where(eq(files.userId, req.user.id))
+      .orderBy(files.uploadedAt);
 
-    res.json({ files });
+    res.json({ files: userFiles });
   } catch (error) {
     console.error("Error fetching files:", error);
     res.status(500).json({ error: "Failed to fetch files" });
@@ -124,7 +157,8 @@ app.delete("/files/:id", protectedRoute, async (req, res) => {
   try {
     const fileId = parseInt(req.params.id);
 
-    const file = await dbHelpers.getFileById(fileId);
+    const result = await db.select().from(files).where(eq(files.id, fileId));
+    const file = result[0];
 
     if (!file) {
       return res.status(404).json({ error: "File not found" });
@@ -135,7 +169,8 @@ app.delete("/files/:id", protectedRoute, async (req, res) => {
         .status(403)
         .json({ error: "You don't have permission to delete this file" });
     }
-    await dbHelpers.deleteFile(fileId);
+
+    await db.delete(files).where(eq(files.id, fileId));
 
     res.json({ message: "File deleted successfully" });
   } catch (error) {
@@ -180,7 +215,16 @@ app.post("/files/confirm", protectedRoute, async (req, res) => {
         .json({ error: "Filename, size, and key are required" });
     }
 
-    const file = await dbHelpers.createFile(filename, size, key, req.user.id);
+    const result = await db
+      .insert(files)
+      .values({
+        name: filename,
+        size,
+        key,
+        userId: req.user.id,
+      })
+      .returning();
+    const file = result[0];
 
     res.status(201).json({
       message: "File metadata saved successfully",
@@ -189,19 +233,6 @@ app.post("/files/confirm", protectedRoute, async (req, res) => {
   } catch (error) {
     console.error("Error saving file metadata:", error);
     res.status(500).json({ error: "Failed to save file metadata" });
-  }
-});
-
-app.get("/metrics", async (req, res) => {
-  try {
-    const cpu = await si.currentLoad();
-    const mem = await si.mem();
-    const temp = await si.cpuTemperature();
-    const metrics = { cpu, mem, temp };
-    res.json(metrics);
-  } catch (error) {
-    console.error("Error fetching metrics:", error);
-    res.status(500).json({ error: "Failed to fetch metrics" });
   }
 });
 
