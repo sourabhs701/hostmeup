@@ -155,8 +155,6 @@ app.delete("/files/:id", protectedRoute, async (req, res) => {
     if (!file) {
       return res.status(404).json({ error: "File not found" });
     }
-    console.log(file.userId);
-    console.log(req.user.id);
 
     if (file.userId != req.user.id) {
       return res
