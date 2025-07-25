@@ -89,7 +89,9 @@ app.get("/auth/github", async (req, res) => {
       await db.insert(users).values(user);
     }
 
-    const redirectUrl = `${window.location.origin}/auth?token=${token}`;
+    const redirectUrl = `${req.protocol}://${req.get(
+      "host"
+    )}/auth?token=${token}`;
     res.redirect(redirectUrl);
   } catch (err) {
     console.error("GitHub OAuth Error:", err.message);
