@@ -1,11 +1,14 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
-export const users = sqliteTable("user", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  email: text("email").notNull().unique(),
-  password: text("password").notNull(),
-  createdAt: text("createdAt").default("CURRENT_TIMESTAMP"),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey(),
+  avatar: text("avatar"),
+  username: text("username").notNull().unique(),
+  email: text("email").unique(),
+  name: text("name"),
+  twitter_username: text("twitter_username"),
+  created_at: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const files = sqliteTable("files", {

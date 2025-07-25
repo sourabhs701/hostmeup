@@ -20,7 +20,7 @@ export default function Dashboard() {
 
     useEffect(() => {
         if (!token) {
-            navigate("/login");
+            navigate("/");
             return;
         }
         loadFilesAndStorage();
@@ -105,7 +105,7 @@ export default function Dashboard() {
 
     function handleLogout() {
         localStorage.removeItem("token");
-        navigate("/login");
+        navigate("/");
     }
 
     return (

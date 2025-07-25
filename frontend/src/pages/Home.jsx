@@ -1,7 +1,13 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const Home = () => {
+    const handleGithubSignIn = () => {
+        const clientId = "Ov23liGWt1TpZAekTWA5"
+        const redirectUri = `http://localhost:3000/auth/github`
+        const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`
+        window.location.href = githubAuthUrl
+    }
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
             <div className="max-w-4xl mx-auto text-center space-y-12">
@@ -18,22 +24,12 @@ const Home = () => {
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                    <Link
-                        to="/register"
+                    <Button
+                        onClick={handleGithubSignIn}
                         className="px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold text-lg hover:bg-primary/90 transition-colors duration-200 flex items-center gap-2"
                     >
-                        Get Started
-                    </Link>
-
-                    <Link
-                        to="/login"
-                        className="px-8 py-4 bg-card text-card-foreground border border-border rounded-lg font-semibold text-lg hover:bg-accent transition-colors duration-200 flex items-center gap-2"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                        </svg>
-                        Sign In
-                    </Link>
+                        Sign-in with Github
+                    </Button>
                 </div>
 
                 {/* Simple Feature Highlight */}
