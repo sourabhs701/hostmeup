@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "@/lib/axios";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { UploadCloud, Power, File, Trash2 } from "lucide-react";
 import ThemeSwitch from "@/components/ThemeSwitch";
+import FileSearch from "@/components/FileSearch";
 
 import {
     AlertDialog,
@@ -26,6 +27,8 @@ export default function Dashboard() {
     const [storage, setStorage] = useState({ usedSizeMB: 0, totalSizeGB: 1, usagePercentage: 0 });
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [filteredFiles, setFilteredFiles] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
     const fileInputRef = useRef(null);
     const navigate = useNavigate();
 
@@ -38,6 +41,8 @@ export default function Dashboard() {
         }
         loadFilesAndStorage();
     }, [token, navigate]);
+
+
 
     async function loadFilesAndStorage() {
         setLoading(true);
@@ -117,6 +122,11 @@ export default function Dashboard() {
         window.open(`https://cdn.srb.codes/${key}`, "_blank");
     }
 
+    const handleSearchResults = useCallback((results, query) => {
+        setFilteredFiles(results);
+        setSearchQuery(query);
+    }, []);
+
     function handleLogout() {
         localStorage.removeItem("token");
         navigate("/");
@@ -183,7 +193,10 @@ export default function Dashboard() {
                 <Card className="md:col-span-3">
                     <CardHeader className="flex justify-between items-center">
                         <CardTitle>Your Files</CardTitle>
-                        <span>{files.length} file{files.length !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center gap-4">
+                            <FileSearch files={files} onSearchResults={handleSearchResults} />
+                            <span>{filteredFiles.length} of {files.length} file{files.length !== 1 ? 's' : ''}</span>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         {loading ? (
@@ -197,9 +210,15 @@ export default function Dashboard() {
                                 <h3 className="text-lg">No files yet</h3>
                                 <p>Upload your first file to get started</p>
                             </div>
+                        ) : filteredFiles.length === 0 && searchQuery ? (
+                            <div className="flex flex-col items-center py-10 text-muted-foreground">
+                                <File size={48} className="mb-2" />
+                                <h3 className="text-lg">No files found</h3>
+                                <p>Try adjusting your search terms</p>
+                            </div>
                         ) : (
                             <div className="space-y-4">
-                                {files.map((file) => (
+                                {filteredFiles.map((file) => (
                                     <div key={file.id} className="flex justify-between items-center p-4 border rounded-md">
                                         <div>
                                             <h3 className="font-medium truncate max-w-xs" title={file.name}>{file.name}</h3>
