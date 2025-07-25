@@ -15,7 +15,7 @@ CMD ["npm", "start"]
 #   -v /home/app/hostmeup/logs:/app/logs \
 #   -p 3000:3000 \
 #   --env-file .env \
-#   --restart=always \
+#   --restart=unless-stopped \
 #   hostmeup
 
 # sudo systemctl enable docker
