@@ -11,8 +11,8 @@ CMD ["npm", "start"]
 
 
 # docker run -d \
-#   -v /home/app/hostmeup/data:/app/data \
-#   -v /home/app/hostmeup/logs:/app/logs \
+#   -v /home/hostmeup/data:/app/data \
+#   -v /home/hostmeup/logs:/app/logs \
 #   -p 3000:3000 \
 #   --env-file .env \
 #   --restart=unless-stopped \
