@@ -1,5 +1,4 @@
 import express from "express";
-import bcrypt from "bcryptjs";
 import { protectedRoute, generateToken } from "./middleware.js";
 import { db } from "./db/db.js";
 import { users, files } from "./db/schema.js";
@@ -9,6 +8,8 @@ import dotenv from "dotenv";
 import path from "path";
 import si from "systeminformation";
 import fs from "fs";
+import cors from "cors";
+import axios from "axios";
 
 const __dirname = path.resolve();
 
@@ -16,8 +17,7 @@ dotenv.config();
 
 const app = express();
 const PORT = 3000;
-
-
+app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
@@ -32,85 +32,68 @@ app.use((req, res, next) => {
   );
   next();
 });
-//backend routes
-app.post("/signup", async (req, res) => {
-  try {
-    const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Username and password are required" });
+app.get("/auth/github", async (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.status(400).json({ error: "Missing authorization code" });
+  }
+
+  try {
+    const { data: tokenData } = await axios.post(
+      "https://github.com/login/oauth/access_token",
+      {
+        client_id: process.env.GITHUB_CLIENT_ID,
+        client_secret: process.env.GITHUB_CLIENT_SECRET,
+        code,
+      },
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (tokenData.error || !tokenData.access_token) {
+      return res.status(400).json({ error: "Failed to retrieve access token" });
     }
 
-    // Check if user already exists
+    const accessToken = tokenData.access_token;
+
+    const { data } = await axios.get("https://api.github.com/user", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/vnd.github.v3+json",
+      },
+    });
+
+    const user = {
+      id: String(data.id),
+      avatar: data.avatar_url,
+      username: data.login,
+      email: data.email,
+      name: data.name,
+      twitter_username: data.twitter_username,
+      created_at: new Date().toISOString(),
+    };
+
+    const token = generateToken(user);
+
     const existingUser = await db
       .select()
       .from(users)
-      .where(eq(users.email, email));
-    if (existingUser.length > 0) {
-      return res.status(409).json({ error: "Email already exists" });
+      .where(eq(users.id, user.id));
+
+    if (existingUser.length === 0) {
+      await db.insert(users).values(user);
     }
 
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const redirectUrl = `http://localhost:5173/auth?token=${token}`;
 
-    // Create user
-    const result = await db
-      .insert(users)
-      .values({
-        email,
-        password: hashedPassword,
-      })
-      .returning();
-    const user = result[0];
-
-    // Generate token
-    const token = generateToken(user);
-
-    res.status(201).json({
-      status: "success",
-      user: { id: user.id, email: user.email },
-      token,
-    });
-  } catch (error) {
-    console.error("Registration error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.post("/signin", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
-
-    // Get user from database
-    const result = await db.select().from(users).where(eq(users.email, email));
-    const user = result[0];
-    if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    // Generate token
-    const token = generateToken(user);
-
-    res.json({
-      status: "success",
-      user: { id: user.id, email: user.email },
-      token,
-    });
-  } catch (error) {
-    console.error("Login error:", error);
+    res.redirect(redirectUrl);
+  } catch (err) {
+    console.error("GitHub OAuth Error:", err.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -171,8 +154,10 @@ app.delete("/files/:id", protectedRoute, async (req, res) => {
     if (!file) {
       return res.status(404).json({ error: "File not found" });
     }
+    console.log(file.userId);
+    console.log(req.user.id);
 
-    if (file.userId !== req.user.id) {
+    if (file.userId != req.user.id) {
       return res
         .status(403)
         .json({ error: "You don't have permission to delete this file" });

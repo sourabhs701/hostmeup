@@ -8,6 +8,19 @@ import { Progress } from "@/components/ui/progress";
 import { UploadCloud, Power, File, Trash2 } from "lucide-react";
 import ThemeSwitch from "@/components/ThemeSwitch";
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+
 export default function Dashboard() {
     const [files, setFiles] = useState([]);
     const [storage, setStorage] = useState({ usedSizeMB: 0, totalSizeGB: 1, usagePercentage: 0 });
@@ -87,8 +100,9 @@ export default function Dashboard() {
         }
     }
 
+
+
     async function handleDelete(id) {
-        if (!window.confirm("Are you sure you want to delete this file?")) return;
         try {
             await axiosInstance.delete(`/files/${id}`, { headers: { Authorization: `Bearer ${token}` } });
             toast.success("File deleted");
@@ -198,10 +212,31 @@ export default function Dashboard() {
                                                 <File className="h-4 w-4 mr-1" />
                                                 Open
                                             </Button>
-                                            <Button size="sm" variant="destructive" onClick={() => handleDelete(file.id)}>
-                                                <Trash2 className="h-4 w-4 mr-1" />
-                                                Delete
-                                            </Button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button size="sm" variant="destructive">
+                                                        <Trash2 className="h-4 w-4 mr-1" />
+                                                        Delete
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete File</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Are you sure you want to delete "{file.name}"? This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() => handleDelete(file.id)}
+                                                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                        >
+                                                            Delete
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </div>
                                     </div>
                                 ))}
