@@ -1,4 +1,4 @@
 node_modules
 .env
-
-hostmeup.db
+data
+logs
