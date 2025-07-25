@@ -17,7 +17,6 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.static("public"));
 
 app.use(express.json());
 
@@ -33,30 +32,12 @@ app.use((req, res, next) => {
   );
   next();
 });
-
-//frontend routes
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-app.get("/signup", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "signup.html"));
-});
-
-app.get("/signin", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "signin.html"));
-});
-
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "dashboard.html"));
-});
-
 //backend routes
 app.post("/signup", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!username || !password) {
+    if (!email || !password) {
       return res
         .status(400)
         .json({ error: "Username and password are required" });
@@ -66,9 +47,9 @@ app.post("/signup", async (req, res) => {
     const existingUser = await db
       .select()
       .from(users)
-      .where(eq(users.username, username));
+      .where(eq(users.email, email));
     if (existingUser.length > 0) {
-      return res.status(409).json({ error: "Username already exists" });
+      return res.status(409).json({ error: "Email already exists" });
     }
 
     // Hash password
@@ -79,7 +60,7 @@ app.post("/signup", async (req, res) => {
     const result = await db
       .insert(users)
       .values({
-        username,
+        email,
         password: hashedPassword,
       })
       .returning();
@@ -89,8 +70,8 @@ app.post("/signup", async (req, res) => {
     const token = generateToken(user);
 
     res.status(201).json({
-      message: "User created successfully",
-      user: { id: user.id, username: user.username },
+      status: "success",
+      user: { id: user.id, email: user.email },
       token,
     });
   } catch (error) {
@@ -101,19 +82,14 @@ app.post("/signup", async (req, res) => {
 
 app.post("/signin", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!username || !password) {
-      return res
-        .status(400)
-        .json({ error: "Username and password are required" });
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required" });
     }
 
     // Get user from database
-    const result = await db
-      .select()
-      .from(users)
-      .where(eq(users.username, username));
+    const result = await db.select().from(users).where(eq(users.email, email));
     const user = result[0];
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -129,8 +105,8 @@ app.post("/signin", async (req, res) => {
     const token = generateToken(user);
 
     res.json({
-      message: "Login successful",
-      user: { id: user.id, username: user.username },
+      status: "success",
+      user: { id: user.id, email: user.email },
       token,
     });
   } catch (error) {
@@ -160,7 +136,25 @@ app.get("/files", protectedRoute, async (req, res) => {
       .where(eq(files.userId, req.user.id))
       .orderBy(files.uploadedAt);
 
-    res.json({ files: userFiles });
+    // Calculate storage usage
+    const totalSize = userFiles.reduce(
+      (sum, file) => sum + (file.size || 0),
+      0
+    );
+    const totalSizeGB = 1; // 1GB limit
+    const usedSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+    const usagePercentage =
+      (totalSize / (totalSizeGB * 1024 * 1024 * 1024)) * 100;
+
+    res.json({
+      files: userFiles,
+      storage: {
+        totalSize,
+        usedSizeMB: parseFloat(usedSizeMB),
+        totalSizeGB,
+        usagePercentage,
+      },
+    });
   } catch (error) {
     console.error("Error fetching files:", error);
     res.status(500).json({ error: "Failed to fetch files" });
@@ -248,6 +242,12 @@ app.post("/files/confirm", protectedRoute, async (req, res) => {
     console.error("Error saving file metadata:", error);
     res.status(500).json({ error: "Failed to save file metadata" });
   }
+});
+
+app.use(express.static(path.join(__dirname, "./public")));
+
+app.get("*rest", (req, res) => {
+  res.sendFile(path.join(__dirname, "./public/index.html"));
 });
 
 app.listen(PORT, () => {
