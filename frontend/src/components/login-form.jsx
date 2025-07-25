@@ -29,7 +29,6 @@ export function LoginForm({
         email,
         password,
       });
-
       const data = response.data;
 
       if (data.status === "success") {
@@ -42,8 +41,8 @@ export function LoginForm({
       }
     } catch (err) {
       console.error("Login error:", err);
-      toast.error("Network error. Please try again.");
-      return { success: false, error: "Network error" };
+      toast.error(err.response.data.error || "Login failed");
+      return { success: false, error: err.response.data.error || "Login failed" };
     } finally {
       setIsLoading(false);
     }

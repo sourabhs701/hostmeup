@@ -42,8 +42,8 @@ export function RegisterForm({
       }
     } catch (err) {
       console.error("Registration error:", err);
-      toast.error("Network error. Please try again.");
-      return { success: false, error: "Network error" };
+      toast.error(err.response.data.error || "Registration failed");
+      return { success: false, error: err.response.data.error || "Registration failed" };
     } finally {
       setIsLoading(false);
     }
