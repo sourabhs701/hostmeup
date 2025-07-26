@@ -44,7 +44,7 @@ app.get("/auth/github", async (req, res) => {
     const { data: tokenData } = await axios.post(
       "https://github.com/login/oauth/access_token",
       {
-        client_id: process.env.GITHUB_CLIENT_ID,
+         client_id: process.env.GITHUB_CLIENT_ID,
         client_secret: process.env.GITHUB_CLIENT_SECRET,
         code,
       },
@@ -69,7 +69,7 @@ app.get("/auth/github", async (req, res) => {
     });
 
     const user = {
-      id: String(data.id),
+      id: data.id,
       avatar: data.avatar_url,
       username: data.login,
       email: data.email,
@@ -78,7 +78,7 @@ app.get("/auth/github", async (req, res) => {
       created_at: new Date().toISOString(),
     };
 
-    const token = generateToken(user);
+    const token = generateToken(user.id);
 
     const existingUser = await db
       .select()

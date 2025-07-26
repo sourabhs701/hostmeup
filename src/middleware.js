@@ -19,6 +19,7 @@ export const protectedRoute = (req, res, next) => {
 
     const decoded = jwt.verify(token, JWT_SECRET);
 
+
     req.user = decoded;
 
     next();
@@ -35,11 +36,10 @@ export const protectedRoute = (req, res, next) => {
   }
 };
 
-export const generateToken = (user) => {
+export const generateToken = (id) => {
   return jwt.sign(
     {
-      id: user.id,
-      email: user.email,
+      id: Number(id),
     },
     JWT_SECRET,
     { expiresIn: "24h" }
