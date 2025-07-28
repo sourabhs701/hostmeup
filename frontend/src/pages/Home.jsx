@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 
 const Home = () => {
     const handleGithubSignIn = () => {
-        const clientId = "Ov23litqO6ZWNjLzqMEo"
+        const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID
         const redirectUri = `${window.location.origin}/auth/github`
         const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`
         window.location.href = githubAuthUrl
