@@ -1,8 +1,8 @@
 import express from "express";
-import { protectedRoute, generateToken } from "./middleware.js";
+import { protectedRoute, generateToken, storage_limit } from "./middleware.js";
 import { db } from "./db/db.js";
 import { users, files } from "./db/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { s3Helper } from "./s3.js";
 import dotenv from "dotenv";
 import path from "path";
@@ -44,7 +44,7 @@ app.get("/auth/github", async (req, res) => {
     const { data: tokenData } = await axios.post(
       "https://github.com/login/oauth/access_token",
       {
-         client_id: process.env.GITHUB_CLIENT_ID,
+        client_id: process.env.GITHUB_CLIENT_ID,
         client_secret: process.env.GITHUB_CLIENT_SECRET,
         code,
       },
@@ -120,22 +120,16 @@ app.get("/files", protectedRoute, async (req, res) => {
       .where(eq(files.userId, req.user.id))
       .orderBy(files.uploadedAt);
 
-    // Calculate storage usage
-    const totalSize = userFiles.reduce(
-      (sum, file) => sum + (file.size || 0),
-      0
-    );
-    const totalSizeGB = 1; // 1GB limit
-    const usedSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
-    const usagePercentage =
-      (totalSize / (totalSizeGB * 1024 * 1024 * 1024)) * 100;
+    const user = await db.select().from(users).where(eq(users.id, req.user.id));
+    const storage_used = user[0].storage_used;
+    const storage_limit = user[0].storage_limit;
+    const usagePercentage = (storage_used / storage_limit) * 100;
 
     res.json({
       files: userFiles,
       storage: {
-        totalSize,
-        usedSizeMB: parseFloat(usedSizeMB),
-        totalSizeGB,
+        storage_used,
+        storage_limit,
         usagePercentage,
       },
     });
@@ -151,6 +145,12 @@ app.delete("/files/:id", protectedRoute, async (req, res) => {
 
     const result = await db.select().from(files).where(eq(files.id, fileId));
     const file = result[0];
+    await db
+      .update(users)
+      .set({
+        storage_used: sql`${users.storage_used} - ${Number(file.size)}`,
+      })
+      .where(eq(users.id, req.user.id));
 
     if (!file) {
       return res.status(404).json({ error: "File not found" });
@@ -171,7 +171,7 @@ app.delete("/files/:id", protectedRoute, async (req, res) => {
   }
 });
 
-app.get("/upload", protectedRoute, async (req, res) => {
+app.get("/upload", protectedRoute, storage_limit, async (req, res) => {
   try {
     const { filename, contentType } = req.query;
 
@@ -216,6 +216,14 @@ app.post("/files/confirm", protectedRoute, async (req, res) => {
         userId: req.user.id,
       })
       .returning();
+
+    await db
+      .update(users)
+      .set({
+        storage_used: sql`${users.storage_used} + ${Number(size)}`,
+      })
+      .where(eq(users.id, req.user.id));
+
     const file = result[0];
 
     res.status(201).json({

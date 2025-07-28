@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 
 const Home = () => {
     const handleGithubSignIn = () => {
-        const clientId = "Ov23liGWt1TpZAekTWA5"
+        const clientId = "Ov23litqO6ZWNjLzqMEo"
         const redirectUri = `${window.location.origin}/auth/github`
         const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`
         window.location.href = githubAuthUrl

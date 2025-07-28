@@ -1,5 +1,8 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { db } from "./db/db.js";
+import { users } from "./db/schema.js";
+import { eq } from "drizzle-orm";
 
 dotenv.config();
 
@@ -18,7 +21,6 @@ export const protectedRoute = (req, res, next) => {
     const token = authHeader.substring(7);
 
     const decoded = jwt.verify(token, JWT_SECRET);
-
 
     req.user = decoded;
 
@@ -46,4 +48,31 @@ export const generateToken = (id) => {
   );
 };
 
-export default protectedRoute;
+export const storage_limit = async (req, res, next) => {
+  try {
+    const { size } = req.query;
+
+    const [user] = await db
+      .select({
+        storage_used: users.storage_used,
+        storage_limit: users.storage_limit,
+      })
+      .from(users)
+      .where(eq(users.id, req.user.id));
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const fileSize = +size || 0;
+
+    if (user.storage_used + fileSize > user.storage_limit) {
+      return res.status(400).json({ error: "Storage limit exceeded" });
+    }
+
+    next();
+  } catch (err) {
+    console.error("Storage limit check failed:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};

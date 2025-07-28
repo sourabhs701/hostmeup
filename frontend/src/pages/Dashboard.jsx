@@ -24,7 +24,11 @@ import {
 
 export default function Dashboard() {
     const [files, setFiles] = useState([]);
-    const [storage, setStorage] = useState({ usedSizeMB: 0, totalSizeGB: 1, usagePercentage: 0 });
+    const [storage, setStorage] = useState({
+        storage_used: 0,
+        storage_limit: 0,
+        usagePercentage: 0
+    });
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [filteredFiles, setFilteredFiles] = useState([]);
@@ -42,15 +46,20 @@ export default function Dashboard() {
         loadFilesAndStorage();
     }, [token, navigate]);
 
-
-
     async function loadFilesAndStorage() {
         setLoading(true);
         try {
-            const res = await axiosInstance.get("/files", { headers: { Authorization: `Bearer ${token}` } });
+            const res = await axiosInstance.get("/files", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
             const data = res.data;
-            const fileList = Array.isArray(data) ? data : data.files || data.data || [];
-            setFiles(fileList);
+
+            // Set files from the response
+            setFiles(data.files || []);
+
+            // Set storage data from the response  
             if (data.storage) {
                 setStorage(data.storage);
             }
@@ -76,21 +85,27 @@ export default function Dashboard() {
                 // Update loading message
                 toast.loading(`Uploading ${i + 1} of ${selectedFiles.length}: ${file.name}`, { id: loadingToast });
 
-                // get presigned URL
+                // Get presigned URL with file size for storage limit check
                 const uploadRes = await axiosInstance.get(
-                    `/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    `/upload?filename=${encodeURIComponent(file.name)}&contentType=${encodeURIComponent(file.type)}&size=${file.size}`,
+                    {
+                        headers: {
+                            "Authorization": `Bearer ${token}`
+                        }
+                    }
                 );
                 const { uploadUrl, key } = uploadRes.data;
 
-                // upload to S3
-                await axiosInstance.put(uploadUrl, file, { headers: { "Content-Type": file.type } });
+                // Upload to S3 using the presigned URL
+                await axiosInstance.put(uploadUrl, file, {
+                    headers: { "Content-Type": file.type, }
+                });
 
-                // confirm
+                // Confirm upload with backend
                 await axiosInstance.post(
                     "/files/confirm",
                     { filename: file.name, size: file.size, key },
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    { headers: { "Authorization": `Bearer ${token}` } }
                 );
             }
 
@@ -99,17 +114,33 @@ export default function Dashboard() {
             loadFilesAndStorage();
         } catch (error) {
             console.error(error);
-            toast.error(`Upload failed: ${error.response?.data?.error || error.message}`, { id: loadingToast });
+
+            // Handle specific error messages from backend
+            let errorMessage = "Upload failed";
+            if (error.response?.data?.error) {
+                const backendError = error.response.data.error;
+                if (backendError === "Storage limit exceeded") {
+                    errorMessage = "❌ Storage limit exceeded! Please free up space or upgrade your plan.";
+                } else {
+                    errorMessage = `Upload failed: ${backendError}`;
+                }
+            } else {
+                errorMessage = `Upload failed: ${error.message}`;
+            }
+
+            toast.error(errorMessage, { id: loadingToast });
         } finally {
             setUploading(false);
         }
     }
 
-
-
     async function handleDelete(id) {
         try {
-            await axiosInstance.delete(`/files/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+            await axiosInstance.delete(`/files/${id}`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
             toast.success("File deleted");
             loadFilesAndStorage();
         } catch (error) {
@@ -132,6 +163,16 @@ export default function Dashboard() {
         navigate("/");
     }
 
+    // Helper function to format bytes to readable format
+    function formatBytes(bytes, decimals = 2) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
     return (
         <div className="min-h-screen bg-background p-6 top-0">
             <header className="flex items-center justify-between mb-6">
@@ -140,7 +181,6 @@ export default function Dashboard() {
                     <p className="text-sm text-muted-foreground">File Management Dashboard</p>
                 </div>
                 <div className="flex items-center gap-2">
-
                     <Button variant="secondary" onClick={handleLogout}>
                         <Power className="mr-2 h-4 w-4" />
                         Logout
@@ -156,9 +196,25 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="mb-2">
-                            {storage.usedSizeMB} MB of {storage.totalSizeGB}GB used
+                            {formatBytes(storage.storage_used)} of {formatBytes(storage.storage_limit)} used
                         </div>
-                        <Progress value={storage.usagePercentage} />
+                        <Progress
+                            value={storage.usagePercentage}
+                            className={`${storage.usagePercentage > 90 ? 'bg-red-100' : storage.usagePercentage > 75 ? 'bg-yellow-100' : ''}`}
+                        />
+                        <div className="text-xs text-muted-foreground mt-1">
+                            {storage.usagePercentage?.toFixed(1)}% used
+                        </div>
+                        {storage.usagePercentage > 90 && (
+                            <div className="text-xs text-red-600 mt-2 font-medium">
+                                ⚠️ Storage almost full! Consider deleting old files.
+                            </div>
+                        )}
+                        {storage.usagePercentage > 75 && storage.usagePercentage <= 90 && (
+                            <div className="text-xs text-yellow-600 mt-2 font-medium">
+                                ⚠️ Storage usage is high ({storage.usagePercentage?.toFixed(1)}%)
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -176,7 +232,7 @@ export default function Dashboard() {
                             <p className="font-medium">
                                 {uploading ? 'Uploading...' : 'Click to upload files'}
                             </p>
-                            <p className="text-xs text-muted-foreground">Multiple files supported (max 100MB each)</p>
+                            <p className="text-xs text-muted-foreground">Multiple files supported</p>
                             <input
                                 type="file"
                                 multiple

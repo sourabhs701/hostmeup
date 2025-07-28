@@ -9,6 +9,8 @@ export const users = sqliteTable("users", {
   name: text("name"),
   twitter_username: text("twitter_username"),
   created_at: text("created_at").default(sql`CURRENT_TIMESTAMP`),
+  storage_used: integer("storage_used").default(0),
+  storage_limit: integer("storage_limit").default(1024 * 1024 * 1024 * 1),
 });
 
 export const files = sqliteTable("files", {
