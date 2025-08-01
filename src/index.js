@@ -179,7 +179,7 @@ app.get("/upload", protectedRoute, storage_limit, async (req, res) => {
       return res.status(400).json({ error: "Filename is required" });
     }
 
-    const key = s3Helper.generateFileKey(req.user.id, filename);
+    const key = `${req.user.id}/${filename}`;
     const { uploadUrl, expiresIn } = await s3Helper.generateUploadUrl(
       key,
       contentType
