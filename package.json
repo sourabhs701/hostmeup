@@ -19,13 +19,11 @@
     "@aws-sdk/s3-request-presigner": "^3.658.1",
     "@libsql/client": "^0.15.10",
     "axios": "^1.11.0",
-    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.44.3",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "systeminformation": "^5.27.7"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.4"

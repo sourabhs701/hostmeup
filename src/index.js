@@ -6,7 +6,6 @@ import { eq, sql } from "drizzle-orm";
 import { s3Helper } from "./s3.js";
 import dotenv from "dotenv";
 import path from "path";
-import si from "systeminformation";
 import fs from "fs";
 import cors from "cors";
 import axios from "axios";
@@ -96,19 +95,6 @@ app.get("/auth/github", async (req, res) => {
   } catch (err) {
     console.error("GitHub OAuth Error:", err.message);
     res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.get("/metrics", async (req, res) => {
-  try {
-    const cpu = await si.currentLoad();
-    const mem = await si.mem();
-    const temp = await si.cpuTemperature();
-    const metrics = { cpu, mem, temp };
-    res.json(metrics);
-  } catch (error) {
-    console.error("Error fetching metrics:", error);
-    res.status(500).json({ error: "Failed to fetch metrics" });
   }
 });
 
