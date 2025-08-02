@@ -14,7 +14,7 @@ const Home = () => {
             <div className="max-w-4xl w-full text-center space-y-8 sm:space-y-12">
 
                 <div>
-                    <img src="/logo.png" alt="Cloud Logo" className="mx-auto w-20 sm:w-24 md:w-32" />
+                    <img src="https://cdn.srb.codes/36205701/logo.png" alt="Cloud Logo" className="mx-auto w-20 sm:w-24 md:w-32" />
                 </div>
 
                 <div className="space-y-3 sm:space-y-4">
@@ -43,7 +43,7 @@ const Home = () => {
 
             </div>
             <div className='max-w-4xl my-10 flex justify-center flex-col items-center' >
-                <img src='/system_design.png' className='rounded-3xl' />
+                <img src='https://cdn.srb.codes/36205701/system_design.png' className='rounded-3xl' />
             </div>
         </div>
     );

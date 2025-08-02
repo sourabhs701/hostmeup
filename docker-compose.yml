@@ -1,0 +1,14 @@
+services:
+  app:
+    container_name: hostmeup
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - /home/hostmeup/data:/app/data
+      - /home/hostmeup/logs:/app/logs
