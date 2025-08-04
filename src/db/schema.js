@@ -1,4 +1,4 @@
-import { pgTable, text, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -14,7 +14,7 @@ export const users = pgTable("users", {
 });
 
 export const files = pgTable("files", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: serial("id").primaryKey(),
   name: text("name").notNull(),
   size: integer("size").notNull(),
   key: text("key").notNull(),

@@ -84,7 +84,7 @@ app.get("/auth/github", async (req, res) => {
       .from(users)
       .where(eq(users.id, user.id));
 
-    if (existingUser.length === 0) {
+    if (!existingUser || existingUser.length === 0) {
       await db.insert(users).values(user);
     }
 
