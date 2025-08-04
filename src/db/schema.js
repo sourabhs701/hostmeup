@@ -1,7 +1,7 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: integer("id").primaryKey(),
   avatar: text("avatar"),
   username: text("username").notNull().unique(),
@@ -13,7 +13,7 @@ export const users = sqliteTable("users", {
   storage_limit: integer("storage_limit").default(1024 * 1024 * 1024 * 1),
 });
 
-export const files = sqliteTable("files", {
+export const files = pgTable("files", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   size: integer("size").notNull(),
