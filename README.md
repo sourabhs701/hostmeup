@@ -1,4 +1,4 @@
-# HostMeUp
+# HostMeUp &nbsp; [![Live](https://img.shields.io/badge/Live-Demo-brightgreen?style=flat&logo=vercel)](https://cloud.srb.codes)
 
 A simple file hosting service with user authentication and AWS S3 integration.
 
