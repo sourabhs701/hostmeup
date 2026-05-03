@@ -30,6 +30,12 @@ A simple file hosting service with user authentication and AWS S3 integration.
 
 ---
 
+## Author
+
+Built by [Sourabh Soni](https://srb.codes?utm_source=github&utm_medium=readme&utm_campaign=google-drive-clone) — Full-Stack & Gen AI Engineer.
+
+> No case-study post exists yet. Content calendar target: **"Self-hosted Google Drive clone with Node.js, S3, and Cloudflare Tunnels"** (keyword: `self-hosted google drive clone nodejs s3`).
+
 ## Connect
 
 Let's connect on X [@srbcode](https://x.com/srbcode)
